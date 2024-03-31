@@ -13,7 +13,7 @@ This project is a simple web application built with Streamlit that allows users 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/vanshikwaghela/YTvideo_to_Notes.git
+   git clone https://github.com/VanshikWaghela/YTvideo_to_Notes.git
    ```
 
 2. Navigate to the project directory:
