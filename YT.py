@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 import os
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
-import PyPDF2
-import base64
+from fpdf import FPDF
 
+load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 prompt = '''You are a youtube video summarizer.Take the transcript provided and give the 
@@ -29,23 +29,19 @@ def generate_gemini_content(transcript_text,prompt):
     return response.text
 
 def notes_to_pdf(notes):
-    # Create a PDF writer object
-    pdf_writer = PyPDF2.PdfFileWriter()
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, txt=notes)
+    pdf_file = "notes.pdf"
+    pdf.output(pdf_file)
+    return pdf_file
 
-    # Create a new PDF page
-    pdf_page = PyPDF2.pdf.PageObject.create_text_page(notes)
-
-    # Add the page to the PDF writer
-    pdf_writer.add_page(pdf_page)
-
-    # Specify the output file name
-    output_pdf = "notes.pdf"
-
-    # Write the PDF to the output file
-    with open(output_pdf, "wb") as f:
-        pdf_writer.write(f)
-
-    return output_pdf
+def get_session_state():
+    if "button_clicked" not in st.session_state:
+        st.session_state.button_clicked = False
+    if "summary" not in st.session_state:
+        st.session_state.summary = ""
 
 st.title("YT videos to Notes converter")
 yt_link = st.text_input("Enter url of the YouTube video")
@@ -54,17 +50,22 @@ if yt_link:
     video_id = yt_link.split("=")[1]
     st.image(f"http://img.youtube.com/vi/{video_id}/0.jpg", use_column_width=True)
 
+get_session_state()
+
 if st.button("Get Notes"):
     transcript_text=fetch_transcript_details(yt_link)
 
     if transcript_text:
         summary=generate_gemini_content(transcript_text,prompt)
-        st.markdown("##Detailed Notes:")
+        st.markdown("## Detailed Notes:")
         st.write(summary)
 
-        if st.button("Download Notes as PDF"):
-            pdf_file = notes_to_pdf(summary)
-            with open(pdf_file, "rb") as f:
-                base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-            href = f'<a href="data:application/octet-stream;base64,{base64_pdf}" download="notes.pdf">Download notes as PDF</a>'
-            st.markdown(href, unsafe_allow_html=True)
+        st.session_state.button_clicked = True
+        st.session_state.summary = summary
+
+if st.session_state.button_clicked:
+    if st.button("Download Notes as PDF"):
+        pdf_file = notes_to_pdf(st.session_state.summary)
+        with open(pdf_file, "rb") as f:
+            pdf_data = f.read()
+        st.download_button(label="Click here to download PDF", data=pdf_data, file_name="notes.pdf", mime="application/pdf")
